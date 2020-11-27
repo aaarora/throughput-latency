@@ -22,8 +22,8 @@ def makeLatencyJson(source, destination):
 # Pull Throughput JSON from Archive
 def makeThroughputJson(source, destination):
     url = 'https://perfsonar.nautilus.optiputer.net/esmond/perfsonar/archive/'
-    tool = 'xrootd-tpc-single-stream'
-    timeRange = 259200
+    tool = 'xrootd-tpc'
+    timeRange = 518400  
     headers = {'Content-Type': 'application/json'}
 
     m = requests.get('{0}?tool-name={1}&source={2}&destination={3}'.format(url,tool,source,destination), headers=headers)
@@ -48,6 +48,14 @@ def parseLatency(source, destination):
         count = count + 1
     return total / count
 
+# Parse Latency from JSON made using PING
+def parseLatencyFromPing(source, destination):
+    with open('makeLatency/LatencyJSON.json') as latencyJSON:
+        for line in latencyJSON:
+            item = json.loads(line)
+            if item['Source'] == source and item['Destination'] == destination:
+                return item['ttl'] if item['ttl'] is not None else Exception
+
 # Avg Throughput
 def parseThroughput(source, destination):
     throughputJSON = makeThroughputJson(source, destination)
@@ -61,7 +69,6 @@ def parseThroughput(source, destination):
     total = 8 * total / 8589934592.0 
     return total / count
 
-
 if __name__ == "__main__":
     with open('internal.json','r') as f:
         conf = json.loads(f.read())
@@ -72,7 +79,7 @@ if __name__ == "__main__":
             if (hostName1 == hostName2):
                 continue
             try:
-                latency = parseLatency(hostIP1,hostIP2)
+                latency = parseLatencyFromPing(hostName1,hostName2)
                 throughput = parseThroughput(hostName1,hostName2)
                 parsedJSON.append((latency,throughput))
             except Exception:
