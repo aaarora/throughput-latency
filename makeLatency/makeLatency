@@ -1,0 +1,23 @@
+#!/bin/bash
+
+> LatencyJSON.json
+
+PODS=()
+
+for pod in $(kubectl -n osg-services get pods -l 'k8s-app=tpc-xrootd' --output=jsonpath={.items..metadata.name}); do 
+    PODS+=( $pod ) 
+done
+
+for pod1 in ${PODS[*]}; do
+    for pod2 in ${PODS[*]}; do
+        pod1_host=$(kubectl -n osg-services exec $pod1 -- printenv | grep 'OSG_FQDN' | cut -d "=" -f 2);
+        pod2_host=$(kubectl -n osg-services exec $pod2 -- printenv | grep 'OSG_FQDN' | cut -d "=" -f 2);
+        ping=$(kubectl -n osg-services exec $pod1 -- ping -c 5 $pod2_host | tail -1 | cut -d "/" -f 5)
+        JSON_STRING=$( jq -n \
+                        --arg p1 "$pod1_host" \
+                        --arg p2 "$pod2_host" \
+                        --arg pg "$ping" \
+                        '{Source: $p1, Destination: $p2, ttl: $pg}' )
+        echo $JSON_STRING >> LatencyJSON.json
+    done
+done
