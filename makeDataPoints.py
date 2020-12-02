@@ -1,7 +1,6 @@
 import requests
 import json
 import pickle
-from tqdm import tqdm
 
 # Pull Latency JSON from Archive
 def makeLatencyJson(source, destination): 
@@ -22,8 +21,8 @@ def makeLatencyJson(source, destination):
 # Pull Throughput JSON from Archive
 def makeThroughputJson(source, destination):
     url = 'https://perfsonar.nautilus.optiputer.net/esmond/perfsonar/archive/'
-    tool = 'gridftp-tpc'
-    timeRange = 500000
+    tool = 'xrootd-tpc'
+    timeRange = 2500000
     headers = {'Content-Type': 'application/json'}
 
     m = requests.get('{0}?tool-name={1}&source={2}&destination={3}'.format(url,tool,source,destination), headers=headers)
@@ -83,7 +82,7 @@ if __name__ == "__main__":
         conf = json.loads(f.read())
     f.close()
     parsedJSON = list()
-    for (hostName1, hostIP1) in tqdm(conf.items()):
+    for (hostName1, hostIP1) in conf.items():
         for (hostName2, hostIP2) in conf.items():
             if (hostName1 == hostName2):
                 continue
@@ -94,5 +93,5 @@ if __name__ == "__main__":
                     parsedJSON.append((float(latency),throughput))
             except Exception:
                 continue
-    with open('xrootd-8-dataPoints.txt','wb') as data:
+    with open('dataPoints.txt','wb') as data:
         pickle.dump(parsedJSON,data)
