@@ -1,7 +1,7 @@
 import requests
 import json
-import time
 import pickle
+from tqdm import tqdm
 
 # Pull Latency JSON from Archive
 def makeLatencyJson(source, destination): 
@@ -22,8 +22,8 @@ def makeLatencyJson(source, destination):
 # Pull Throughput JSON from Archive
 def makeThroughputJson(source, destination):
     url = 'https://perfsonar.nautilus.optiputer.net/esmond/perfsonar/archive/'
-    tool = 'xrootd-tpc'
-    timeRange = 518400  
+    tool = 'gridftp-tpc'
+    timeRange = 500000
     headers = {'Content-Type': 'application/json'}
 
     m = requests.get('{0}?tool-name={1}&source={2}&destination={3}'.format(url,tool,source,destination), headers=headers)
@@ -59,6 +59,7 @@ def parseLatencyFromPing(source, destination):
 # Avg Throughput
 def parseThroughput(source, destination):
     throughputJSON = makeThroughputJson(source, destination)
+    print(throughputJSON)
     if throughputJSON is None:
         raise Exception
     total = 0
@@ -66,23 +67,32 @@ def parseThroughput(source, destination):
     for item in throughputJSON:
         total = total + float(item[u'val'])
         count = count + 1
-    total = 8 * total / 8589934592.0 
-    return total / count
+    mean = total / count
+    realtotal = 0
+    realcount = 0
+    for item in throughputJSON:
+        fluctuation = abs(mean - float(item[u'val'])) / mean
+        if (fluctuation < 0.35):
+            realtotal = total + float(item[u'val'])
+            realcount = count + 1
+    realtotal = 8 * realtotal / 8589934592.0 
+    return realtotal / realcount
 
 if __name__ == "__main__":
-    with open('internal.json','r') as f:
+    with open('makeJson/conf.json','r') as f:
         conf = json.loads(f.read())
     f.close()
     parsedJSON = list()
-    for (hostName1, hostIP1) in conf.items():
+    for (hostName1, hostIP1) in tqdm(conf.items()):
         for (hostName2, hostIP2) in conf.items():
             if (hostName1 == hostName2):
                 continue
             try:
                 latency = parseLatencyFromPing(hostName1,hostName2)
                 throughput = parseThroughput(hostName1,hostName2)
-                parsedJSON.append((latency,throughput))
+                if latency is not None and throughput is not None:
+                    parsedJSON.append((float(latency),throughput))
             except Exception:
                 continue
-    with open('dataPoints.txt','wb') as data:
+    with open('xrootd-8-dataPoints.txt','wb') as data:
         pickle.dump(parsedJSON,data)
