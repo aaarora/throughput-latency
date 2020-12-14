@@ -7,11 +7,8 @@ def makeLatencyJson(source, destination):
     url = 'https://perfsonar.nautilus.optiputer.net/esmond/perfsonar/archive/'
     timeRange = 10000
     headers = {'Content-Type': 'application/json'}
-
     m = requests.get('{0}?source={1}&destination={2}'.format(url,source,destination), headers=headers)
-
     returnJSON = m.json()
-
     for item in returnJSON:
         n = requests.get('{0}histogram-owdelay/statistics/0?time-range={1}'.format(item['url'],timeRange), headers=headers)
         dataJSON = n.json()
@@ -21,8 +18,8 @@ def makeLatencyJson(source, destination):
 # Pull Throughput JSON from Archive
 def makeThroughputJson(source, destination):
     url = 'https://perfsonar.nautilus.optiputer.net/esmond/perfsonar/archive/'
-    tool = 'xrootd-tpc'
-    timeRange = 2500000
+    tool = 'gridftp-tpc-single-stream'
+    timeRange = 907200
     headers = {'Content-Type': 'application/json'}
 
     m = requests.get('{0}?tool-name={1}&source={2}&destination={3}'.format(url,tool,source,destination), headers=headers)
@@ -93,5 +90,5 @@ if __name__ == "__main__":
                     parsedJSON.append((float(latency),throughput))
             except Exception:
                 continue
-    with open('dataPoints.txt','wb') as data:
+    with open('xrootd-dataPoints.txt','wb') as data:
         pickle.dump(parsedJSON,data)
