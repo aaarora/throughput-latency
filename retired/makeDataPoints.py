@@ -2,6 +2,19 @@ import requests
 import json
 import pickle
 
+# Pull Latency JSON from Archive
+def makeLatencyJson(source, destination): 
+    url = 'https://perfsonar.nautilus.optiputer.net/esmond/perfsonar/archive/'
+    timeRange = 10000
+    headers = {'Content-Type': 'application/json'}
+    m = requests.get('{0}?source={1}&destination={2}'.format(url,source,destination), headers=headers)
+    returnJSON = m.json()
+    for item in returnJSON:
+        n = requests.get('{0}histogram-owdelay/statistics/0?time-range={1}'.format(item['url'],timeRange), headers=headers)
+        dataJSON = n.json()
+        if dataJSON:
+            return dataJSON
+
 # Pull Throughput JSON from Archive
 def makeThroughputJson(source, destination):
     url = 'https://perfsonar.nautilus.optiputer.net/esmond/perfsonar/archive/'
@@ -19,8 +32,20 @@ def makeThroughputJson(source, destination):
         if dataJSON:
             return dataJSON
 
-# Parse Latency from JSON made using PING
+# Parse Points from Latency JSON
 def parseLatency(source, destination):
+    latencyJSON = makeLatencyJson(source, destination)
+    if latencyJSON is None:
+        raise Exception
+    total = 0
+    count = 0
+    for item in latencyJSON:
+        total = total + float(item[u'val'][u'mean'])
+        count = count + 1
+    return total / count
+
+# Parse Latency from JSON made using PING
+def parseLatencyFromPing(source, destination):
     with open('makeLatency/LatencyJSON.json') as latencyJSON:
         for line in latencyJSON:
             item = json.loads(line)
@@ -59,7 +84,7 @@ if __name__ == "__main__":
             if (hostName1 == hostName2):
                 continue
             try:
-                latency = parseLatency(hostName1,hostName2)
+                latency = parseLatencyFromPing(hostName1,hostName2)
                 throughput = parseThroughput(hostName1,hostName2)
                 if latency is not None and throughput is not None:
                     parsedJSON.append((float(latency),throughput))
